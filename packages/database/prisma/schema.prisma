@@ -1,0 +1,300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  JUNIOR
+}
+
+enum AttendanceStatus {
+  ON_TIME
+  LATE
+  MISSED
+}
+
+enum LeaveType {
+  SICK
+  VACATION
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_APPROVED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+  OVERDUE
+}
+
+enum TaskType {
+  DESIGN
+  TENDER
+  TECHNICAL_OFFICE
+  PROJECTS
+  PROJECT_CONTROL
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  TASK_DECLINED
+  TASK_OVERDUE
+  LEAVE_UPDATE
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum MilestoneStatus {
+  ON_TRACK
+  AT_RISK
+  LATE
+  COMPLETE
+}
+
+model User {
+  id             String            @id @default(cuid())
+  employeeCode   String?           @unique
+  email          String            @unique
+  password       String
+  firstName      String
+  lastName       String
+  role           UserRole
+  department     String?
+  jobTitle       String?
+  location       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  attendance     AttendanceRecord[]
+  leaveRequests  LeaveRequest[]
+  leaveQuotas    LeaveQuota[]
+  tasksAssigned  Task[]            @relation("TaskAssignee")
+  tasksCreated   Task[]            @relation("TaskCreator")
+  approvals      LeaveRequest[]    @relation("LeaveApprover")
+  notifications  Notification[]
+  projects       Project[]         @relation("ProjectOwner")
+  taskComments   TaskComment[]
+  taskActivities TaskActivity[]
+  auditLogs      AuditLog[]
+}
+
+model AttendanceRecord {
+  id            String           @id @default(cuid())
+  userId        String
+  signInAt      DateTime
+  signOutAt     DateTime?
+  signInCity    String?
+  signInIp      String?
+  signInDevice  String?
+  signOutCity   String?
+  signOutIp     String?
+  signOutDevice String?
+  status        AttendanceStatus
+  lateMinutes   Int?             @default(0)
+  totalMinutes  Int?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  user          User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, signInAt])
+}
+
+model LeaveRequest {
+  id               String       @id @default(cuid())
+  userId           String
+  approverId       String? 
+  type             LeaveType
+  status           LeaveStatus  @default(PENDING)
+  reason           String?
+  adminComment     String?
+  startDate        DateTime
+  endDate          DateTime
+  autoApproved     Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  user             User         @relation(fields: [userId], references: [id])
+  approver         User?        @relation("LeaveApprover", fields: [approverId], references: [id])
+}
+
+model LeaveQuota {
+  id          String     @id @default(cuid())
+  userId      String
+  type        LeaveType
+  periodStart DateTime
+  periodEnd   DateTime
+  allowance   Int
+  used        Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@unique([userId, type, periodStart])
+}
+
+model Task {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  status        TaskStatus    @default(PENDING)
+  priority      TaskPriority  @default(MEDIUM)
+  type          TaskType
+  dueAt         DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  completedAt   DateTime?
+  declinedAt    DateTime?
+  declineNotes  String?
+  assigneeId    String
+  createdById   String
+  projectId     String?
+  assignee      User          @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator       User          @relation("TaskCreator", fields: [createdById], references: [id])
+  project       Project?      @relation(fields: [projectId], references: [id])
+  comments      TaskComment[]
+  activities    TaskActivity[]
+
+  @@index([assigneeId, status])
+  @@index([createdById])
+  @@index([projectId])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model TaskActivity {
+  id        String   @id @default(cuid())
+  taskId    String
+  actorId   String
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id])
+  actor     User     @relation(fields: [actorId], references: [id])
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  code         String        @unique
+  description  String?
+  status       String?
+  ownerId      String
+  startDate    DateTime
+  endDate      DateTime?
+  budget       Decimal?      @db.Money
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  owner        User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  milestones   Milestone[]
+  invoices     Invoice[]
+  costEntries  CostEntry[]
+  tasks        Task[]
+}
+
+model Milestone {
+  id          String         @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  deadline    DateTime
+  progress    Int            @default(0)
+  status      MilestoneStatus
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  project     Project        @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, deadline])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  projectId   String?
+  vendor      String
+  amount      Decimal       @db.Money
+  poNumber    String?
+  dueDate     DateTime
+  status      InvoiceStatus @default(PENDING)
+  fileKey     String?
+  notes       String?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  project     Project?      @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([status, dueDate])
+}
+
+model CostEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  category    String
+  planned     Decimal? @db.Money
+  actual      Decimal? @db.Money
+  variance    Decimal? @db.Money
+  reason      String?
+  recordedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id])
+}
+
+model Notification {
+  id         String              @id @default(cuid())
+  userId     String
+  type       NotificationType
+  channel    NotificationChannel
+  title      String
+  message    String
+  payload    Json?
+  readAt     DateTime?
+  createdAt  DateTime            @default(now())
+  user       User                @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+

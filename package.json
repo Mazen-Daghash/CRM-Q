@@ -1,0 +1,37 @@
+{
+  "name": "qubix-crm",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Internal CRM platform for Qubix Construction.",
+  "scripts": {
+    "dev": "npm run dev:api & npm run dev:web",
+    "dev:api": "npm run start:dev --workspace=@qubix/api",
+    "dev:web": "npm run dev --workspace=@qubix/web",
+    "build": "npm run build --workspace=@qubix/database && npm run build --workspace=@qubix/api --workspace=@qubix/web",
+    "build:electron": "npm run build && npm run clean:electron && npm run build:electron:app",
+    "clean:electron": "if exist electron\\dist-electron rmdir /s /q electron\\dist-electron",
+    "build:electron:app": "cd electron && npm run build:win",
+    "electron": "cd electron && npm start",
+    "lint": "npm run lint --workspaces",
+    "format": "npm run format --workspaces",
+    "postinstall": "cd packages/database && npx prisma generate"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "launcher"
+  ],
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "crm",
+    "construction",
+    "nestjs",
+    "nextjs",
+    "monorepo"
+  ],
+  "author": "Qubix CRM",
+  "license": "MIT"
+}

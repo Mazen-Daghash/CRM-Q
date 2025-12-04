@@ -1,0 +1,81 @@
+{
+  "name": "qubix-crm-electron",
+  "version": "1.0.0",
+  "description": "Qubix CRM Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "prebuild": "node pre-build.js",
+    "prebuild:win": "node pre-build.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.qubix.crm",
+    "productName": "Qubix CRM",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "main.js",
+      "postgres-setup.js",
+      "../apps/api/dist/**/*",
+      "../apps/web/.next/**/*",
+      "../apps/web/public/**/*",
+      "../apps/web/package.json",
+      "../apps/web/node_modules/**/*",
+      "../packages/**/*",
+      "../node_modules/@prisma/client/**/*",
+      "../node_modules/.prisma/**/*",
+      "!../node_modules/.cache/**/*",
+      "!../**/node_modules/.cache/**/*",
+      "!../**/*.md",
+      "!../**/test/**/*",
+      "!../**/*.test.*",
+      "!../**/*.spec.*"
+    ],
+    "extraResources": [
+      {
+        "from": "../node_modules",
+        "to": "node_modules",
+        "filter": [
+          "@prisma/client/**/*",
+          ".prisma/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Qubix CRM",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
+    }
+  },
+  "author": "Qubix CRM",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^39.2.5",
+    "electron-builder": "^26.0.12"
+  }
+}
